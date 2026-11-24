@@ -1,0 +1,21 @@
+# OS & editor files
+.DS_Store
+*.swp
+*~
+
+# Node dependencies (prototype/node_modules is ~62 MB; extension uses vendor/)
+node_modules/
+npm-debug.log*
+
+# Large test media fixtures & downloaded/encoded outputs
+*.aac
+*.mp3
+*.mp4
+
+# Chrome extension packaging artifacts
+*.crx
+*.pem
+*.zip
+
+# Uncomment to exclude the entire standalone benchmark directory:
+# prototype/
