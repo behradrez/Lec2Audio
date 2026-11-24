@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lecture to MP3</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tab-dl" aria-selected="true">Download</button>
+    <button role="tab" id="tab-hist" aria-selected="false">History</button>
+  </nav>
+
+  <main id="view-dl">
+    <section class="folder">
+      <span id="folder-label" class="muted"></span>
+      <button id="folder-btn" class="link"></button>
+    </section>
+
+    <section id="empty" hidden class="empty">
+      <strong>No lecture detected</strong>
+      <p>Open a McGill lecture recording in this browser and press play for a few seconds. It will show up here.</p>
+    </section>
+
+    <section id="detected" hidden>
+      <label class="label">Detected lecture</label>
+      <div id="current" class="current"></div>
+      <details id="others" hidden>
+        <summary>Other recent lectures</summary>
+        <ul id="other-list" class="others"></ul>
+      </details>
+
+      <div id="status" class="status" hidden></div>
+
+      <div id="form">
+        <label for="filename" class="label">Filename</label>
+        <input id="filename" type="text" spellcheck="false" autocomplete="off">
+        <div class="row">
+          <button id="go" class="primary">Download</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="progress" hidden>
+      <div class="bar"><div id="bar-fill"></div></div>
+      <div id="progress-text" class="muted"></div>
+      <div class="row"><button id="cancel">Cancel</button></div>
+    </section>
+
+    <p id="message" class="message" hidden></p>
+  </main>
+
+  <main id="view-hist" hidden>
+    <input id="search" type="search" placeholder="Search recordings…" autocomplete="off">
+    <ul id="history" class="history"></ul>
+    <p id="hist-empty" class="muted" hidden>No recordings yet.</p>
+  </main>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

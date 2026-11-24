@@ -1,0 +1,17 @@
+<!doctype html><meta charset="utf-8"><title>encoder harness</title>
+<pre id="log">idle</pre>
+<script type="module">
+import { encodeToMp3 } from "../lib/encoder.js";
+window.runTest = async (src = "/test/real-120MB.aac") => {
+  const audio = new Uint8Array(await (await fetch(src)).arrayBuffer());
+  const t0 = performance.now();
+  let lastF = 0, updates = 0;
+  const mp3 = await encodeToMp3(audio, "aac", { baseUrl: location.origin + "/", onProgress: (f) => { lastF = f; updates++; } });
+  const ms = Math.round(performance.now() - t0);
+  // expose for download to disk
+  window.__mp3 = mp3;
+  const b64 = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result.split(",")[1]); r.readAsDataURL(new Blob([mp3])); });
+  return { ms, inBytes: audio.length, outBytes: mp3.length, lastF, updates, b64 };
+};
+window.__ready = true;
+</script>

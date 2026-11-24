@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Play recording</title>
+  <link rel="stylesheet" href="popup.css">
+  <style>body { width: auto; max-width: 640px; margin: 40px auto; } audio { width: 100%; margin-top: 12px; }</style>
+</head>
+<body>
+  <main>
+    <h2 id="name"></h2>
+    <p id="message" class="message" hidden></p>
+    <button id="grant" hidden>Grant folder access</button>
+    <audio id="audio" controls hidden></audio>
+  </main>
+  <script type="module" src="player.js"></script>
+</body>
+</html>

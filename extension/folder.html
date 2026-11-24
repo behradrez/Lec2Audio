@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Output folder</title>
+  <link rel="stylesheet" href="popup.css">
+  <style>body { width: auto; max-width: 480px; margin: 40px auto; }</style>
+</head>
+<body>
+  <main>
+    <h2>Output folder</h2>
+    <p id="current" class="muted"></p>
+    <div class="row">
+      <button id="choose" class="primary">Choose folder…</button>
+      <button id="grant" hidden>Re-grant access</button>
+    </div>
+    <p id="message" class="message" hidden></p>
+    <p class="muted">Recordings are saved here as MP3 files. The extension can only touch the folder you pick.
+      Chrome may ask you to re-confirm access after a restart.</p>
+  </main>
+  <script type="module" src="folder.js"></script>
+</body>
+</html>
