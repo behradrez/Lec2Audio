@@ -68,4 +68,3 @@ requiring it, add a `declarativeNetRequestWithHostAccess` session rule for that 
   `LECTURE_URL='https://lrscdn.mcgill.ca/api/tsmedia/?...' node test/node-download.mjs out.aac 120000000`
 - `encode-harness.html` — loads `lib/encoder.js` in a normal page (serve this folder with any static
   server) to time the ffmpeg.wasm step.
-- `prototype/` — the earlier standalone ffmpeg.wasm benchmark (safe to delete, includes a 44 MB test file).

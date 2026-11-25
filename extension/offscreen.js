@@ -38,16 +38,20 @@ async function run(job) {
     };
 
     send({ id, phase: "download", loaded: 0, total: null });
-    const { audio, kind } = await downloadAudio({
+    const { audio, kind, clipOffsetSec, clipDurationSec } = await downloadAudio({
       url: job.url,
       signal,
       limitBytes: job.limitBytes,
+      startSec: job.startSec ?? 0,
+      endSec: job.endSec ?? null,
       onProgress: (p) => throttled({ phase: "download", loaded: p.loaded, total: p.total }),
     });
 
     send({ id, phase: "encode", fraction: 0, audioBytes: audio.length });
     const mp3 = await encodeToMp3(audio, kind, {
       baseUrl: chrome.runtime.getURL("/"),
+      startSec: clipOffsetSec,
+      durationSec: clipDurationSec,
       signal,
       onProgress: (f) => throttled({ phase: "encode", fraction: f }),
     });

@@ -1,4 +1,4 @@
-// Minimal MPEG-TS audio extractor.
+// Minimal MPEG-TS audio extractor with PES PTS parsing and optional time-window filtering.
 //
 // McGill serves lectures as one big MPEG-TS stream (H.264 video + AAC audio, ~1 GB
 // for a one-hour lecture). Instead of loading all of that into ffmpeg.wasm (which
@@ -6,6 +6,18 @@
 // audio elementary stream (~60 MB/hour). That small file is what ffmpeg.wasm encodes.
 
 const BLOCK = 4 * 1024 * 1024;
+const PTS_MOD = 8589934592; // 2^33 ticks at 90 kHz
+
+/**
+ * Elapsed seconds from `basePts` to `pts`, handling 33-bit MPEG-TS PTS wrap-around.
+ * @param {number} pts
+ * @param {number} basePts
+ */
+export function deltaPtsSeconds(pts, basePts) {
+  let diff = pts - basePts;
+  if (diff < -PTS_MOD / 2) diff += PTS_MOD;
+  return diff / 90000;
+}
 
 class ByteSink {
   constructor() {
@@ -45,13 +57,35 @@ class ByteSink {
 const AUDIO_TYPES = { 0x0f: "aac", 0x03: "mp3", 0x04: "mp3" };
 
 export class TsAudioExtractor {
-  constructor() {
+  /**
+   * @param {object} [opts]
+   * @param {number|null} [opts.pmtPid]       pre-discovered PMT PID (for mid-stream Range seeks)
+   * @param {number|null} [opts.audioPid]     pre-discovered audio PID
+   * @param {string|null} [opts.kind]         pre-discovered audio kind ("aac" | "mp3")
+   * @param {number|null} [opts.basePts]      initial stream PTS (90 kHz ticks) for relative timing
+   * @param {number|null} [opts.keepFromSec]  skip audio PES packets earlier than this relative second
+   * @param {number|null} [opts.stopAfterSec] stop keeping audio once PTS passes this relative second
+   * @param {boolean} [opts.collect]          false to only probe PIDs and PTS without buffering audio
+   */
+  constructor(opts = {}) {
     this.carry = null;
-    this.pmtPid = null;
-    this.audioPid = null;
-    this.kind = null; // "aac" | "mp3"
-    this.sink = new ByteSink();
+    this.pmtPid = opts.pmtPid ?? null;
+    this.audioPid = opts.audioPid ?? null;
+    this.kind = opts.kind ?? null; // "aac" | "mp3"
+    this.basePts = opts.basePts ?? null;
+    this.keepFromSec = opts.keepFromSec ?? null;
+    this.stopAfterSec = opts.stopAfterSec ?? null;
+    this.collect = opts.collect !== false;
+
+    this.sink = this.collect ? new ByteSink() : null;
     this.packets = 0;
+    this.firstPts = null;
+    this.lastPts = null;
+    this.keptFirstSec = null;
+    this.reachedEnd = false;
+    // When windowing (or seeking mid-stream), wait for a PES header with PTS before keeping bytes.
+    this._windowing = this.keepFromSec !== null || this.stopAfterSec !== null;
+    this._keeping = !this._windowing;
   }
 
   /** Feed the next chunk of the transport stream (any size, need not be packet-aligned). */
@@ -76,7 +110,7 @@ export class TsAudioExtractor {
     this.carry = i < data.length ? data.slice(i) : null;
   }
 
-  /** @returns {{audio: Uint8Array, kind: string}} */
+  /** @returns {{audio: Uint8Array, kind: string, firstPts: number|null, lastPts: number|null, keptFirstSec: number|null, reachedEnd: boolean}} */
   finish() {
     if (!this.audioPid) {
       throw new Error(
@@ -85,7 +119,14 @@ export class TsAudioExtractor {
           : "No supported audio stream (AAC/MP3) found in the stream."
       );
     }
-    return { audio: this.sink.toUint8Array(), kind: this.kind };
+    return {
+      audio: this.sink ? this.sink.toUint8Array() : new Uint8Array(0),
+      kind: this.kind,
+      firstPts: this.firstPts,
+      lastPts: this.lastPts,
+      keptFirstSec: this.keptFirstSec,
+      reachedEnd: this.reachedEnd,
+    };
   }
 
   _packet(d, o) {
@@ -103,10 +144,38 @@ export class TsAudioExtractor {
 
     if (pid === this.audioPid) {
       let start = p;
-      if (pusi && d[p] === 0 && d[p + 1] === 0 && d[p + 2] === 1) {
-        start = p + 9 + d[p + 8]; // skip PES header
+      if (pusi && p + 9 <= end && d[p] === 0 && d[p + 1] === 0 && d[p + 2] === 1) {
+        const flags = d[p + 7];
+        const headerDataLen = d[p + 8];
+        if ((flags & 0x80) && headerDataLen >= 5 && p + 14 <= end) {
+          const pts =
+            ((d[p + 9] & 0x0e) * 536870912) +
+            ((d[p + 10] & 0xff) << 22) +
+            ((d[p + 11] & 0xfe) << 14) +
+            ((d[p + 12] & 0xff) << 7) +
+            ((d[p + 13] & 0xfe) >> 1);
+          if (this.firstPts === null) this.firstPts = pts;
+          this.lastPts = pts;
+          if (this.basePts === null) this.basePts = pts;
+
+          if (this._windowing) {
+            const relSec = deltaPtsSeconds(pts, this.basePts);
+            if (this.stopAfterSec !== null && relSec > this.stopAfterSec) {
+              this._keeping = false;
+              this.reachedEnd = true;
+            } else if (this.keepFromSec !== null && relSec < this.keepFromSec) {
+              this._keeping = false;
+            } else {
+              this._keeping = true;
+              if (this.keptFirstSec === null) this.keptFirstSec = relSec;
+            }
+          }
+        }
+        start = p + 9 + headerDataLen; // skip PES header
       }
-      if (start < end) this.sink.append(d.subarray(start, end));
+      if (this.collect && this._keeping && start < end) {
+        this.sink.append(d.subarray(start, end));
+      }
     } else if (pid === 0 && this.pmtPid === null && pusi) {
       this._pat(d, p);
     } else if (pid === this.pmtPid && this.audioPid === null && pusi) {
@@ -144,4 +213,21 @@ export class TsAudioExtractor {
       q += 5 + esLen;
     }
   }
+}
+
+/**
+ * Inspect a small MPEG-TS chunk for PAT/PMT PIDs and audio PTS bounds without buffering audio.
+ * @param {Uint8Array} buf
+ * @param {{ pmtPid?: number|null, audioPid?: number|null, kind?: string|null }} [known]
+ */
+export function probeTsChunk(buf, known = {}) {
+  const ex = new TsAudioExtractor({ ...known, collect: false });
+  ex.push(buf);
+  return {
+    pmtPid: ex.pmtPid,
+    audioPid: ex.audioPid,
+    kind: ex.kind,
+    firstPts: ex.firstPts,
+    lastPts: ex.lastPts,
+  };
 }

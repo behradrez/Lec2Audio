@@ -12,6 +12,14 @@
   },
   "permissions": ["webRequest", "storage", "offscreen"],
   "host_permissions": ["https://*.mcgill.ca/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://*.mcgill.ca/*"],
+      "js": ["content.js"],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ],
   "background": { "service_worker": "background.js", "type": "module" },
   "action": {
     "default_title": "Lecture to MP3",

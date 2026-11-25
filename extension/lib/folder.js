@@ -9,15 +9,21 @@ const KEY = "dirHandle";
 function open() {
   return new Promise((resolve, reject) => {
     const r = indexedDB.open(DB, 1);
-    r.onupgradeneeded = () => r.result.createObjectStore(STORE);
+    r.onupgradeneeded = () => {
+      if (!r.result.objectStoreNames.contains(STORE)) {
+        r.result.createObjectStore(STORE);
+      }
+    };
     r.onsuccess = () => resolve(r.result);
     r.onerror = () => reject(r.error);
+    r.onblocked = () => reject(new Error("IndexedDB open blocked"));
   });
 }
 
 async function tx(mode, fn) {
   const db = await open();
   try {
+    if (!db.objectStoreNames.contains(STORE)) return undefined;
     return await new Promise((resolve, reject) => {
       const req = fn(db.transaction(STORE, mode).objectStore(STORE));
       req.onsuccess = () => resolve(req.result);

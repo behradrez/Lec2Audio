@@ -119,6 +119,16 @@ async function startJob(job) {
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.target === "background" && msg.type === "player-time") {
+    const tabId = _sender?.tab?.id;
+    if (tabId > 0 && msg.info) {
+      chrome.storage.session.get("playerTimes").then(({ playerTimes = {} }) => {
+        playerTimes[tabId] = { ...msg.info, ts: Date.now() };
+        return chrome.storage.session.set({ playerTimes });
+      }).catch(() => {});
+    }
+    return;
+  }
   if (msg?.target === "background" && msg.type === "job-update") {
     (async () => {
       const { job } = await chrome.storage.session.get("job");

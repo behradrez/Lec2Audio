@@ -3,16 +3,106 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Play recording</title>
+  <title>Play &amp; Trim recording</title>
   <link rel="stylesheet" href="popup.css">
-  <style>body { width: auto; max-width: 640px; margin: 40px auto; } audio { width: 100%; margin-top: 12px; }</style>
+  <style>
+    body { width: auto; max-width: 720px; margin: 32px auto; padding: 0 12px; }
+    h2 { margin: 0 0 4px; word-break: break-all; }
+    .meta-line { margin: 0 0 12px; font-size: 12px; }
+    audio { width: 100%; margin: 12px 0 4px; }
+    .trim-card { margin-top: 16px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+    .trim-card-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; gap: 8px; }
+    .trim-card-head h3 { margin: 0; font-size: 14px; }
+    .wave-wrap { position: relative; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); overflow: hidden; }
+    #waveform { display: block; width: 100%; height: 124px; cursor: pointer; touch-action: none; }
+    .wave-status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: var(--muted); pointer-events: none; background: color-mix(in srgb, var(--bg) 70%, transparent); }
+    .wave-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 12px;
+      font-variant-numeric: tabular-nums; }
+    .wave-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .wave-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .save-mode { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .radio-group { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; }
+    .radio-opt { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+    .new-name-wrap { margin-top: 10px; }
+    .save-row { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+    .save-row .primary { flex: 0 0 auto; min-width: 140px; }
+    #save-progress { margin-top: 10px; }
+    #open-new { margin-left: 8px; }
+  </style>
 </head>
 <body>
   <main>
     <h2 id="name"></h2>
-    <p id="message" class="message" hidden></p>
+    <p id="meta" class="muted meta-line"></p>
     <button id="grant" hidden>Grant folder access</button>
     <audio id="audio" controls hidden></audio>
+
+    <section id="trim-section" class="trim-card" hidden>
+      <div class="trim-card-head">
+        <h3>Trim audio</h3>
+        <span id="selection-summary" class="muted"></span>
+      </div>
+
+      <div class="wave-wrap">
+        <canvas id="waveform"></canvas>
+        <div id="wave-status" class="wave-status" hidden>Generating waveform…</div>
+      </div>
+
+      <div class="wave-footer muted">
+        <span id="hover-hint">Click waveform to seek · drag handles to trim</span>
+        <span id="playhead-readout">0:00</span>
+      </div>
+
+      <div class="wave-actions">
+        <button id="play-sel" type="button" class="small">Play selection</button>
+        <button id="mark-start" type="button" class="small">Set start here</button>
+        <button id="mark-end" type="button" class="small">Set end here</button>
+        <button id="reset-trim" type="button" class="small">Reset</button>
+      </div>
+
+      <div class="wave-inputs">
+        <label class="trim-field">
+          <span class="trim-tag">Start</span>
+          <input id="start-time" type="text" placeholder="0:00" spellcheck="false" autocomplete="off">
+        </label>
+        <label class="trim-field">
+          <span class="trim-tag">End</span>
+          <input id="end-time" type="text" placeholder="End" spellcheck="false" autocomplete="off">
+        </label>
+      </div>
+      <p id="trim-error" class="trim-error" hidden></p>
+
+      <div class="save-mode">
+        <span class="label" style="margin-top:0">Save option</span>
+        <div class="radio-group">
+          <label class="radio-opt">
+            <input type="radio" name="save-mode" value="overwrite" checked>
+            <span>Overwrite existing file</span>
+          </label>
+          <label class="radio-opt">
+            <input type="radio" name="save-mode" value="new">
+            <span>Save as new file</span>
+          </label>
+        </div>
+        <div id="new-name-wrap" class="new-name-wrap" hidden>
+          <label for="new-filename" class="label" style="margin-top:0">New filename</label>
+          <input id="new-filename" type="text" spellcheck="false" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="save-row">
+        <button id="save-trim" type="button" class="primary">Trim &amp; Save</button>
+        <span id="save-note" class="muted" style="font-size:12px">Lossless trim (no re-encoding)</span>
+      </div>
+
+      <div id="save-progress" hidden>
+        <div class="bar"><div id="save-bar-fill" style="height:100%;width:0;background:var(--accent);transition:width .2s;"></div></div>
+        <div id="save-progress-text" class="muted" style="margin-top:4px;font-size:12px;"></div>
+      </div>
+    </section>
+
+    <p id="message" class="message" hidden></p>
   </main>
   <script type="module" src="player.js"></script>
 </body>

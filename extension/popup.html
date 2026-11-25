@@ -14,7 +14,7 @@
 
   <main id="view-dl">
     <section class="folder">
-      <span id="folder-label" class="muted"></span>
+      <span id="folder-label" class="muted">Loading…</span>
       <button id="folder-btn" class="link"></button>
     </section>
 
@@ -36,6 +36,23 @@
       <div id="form">
         <label for="filename" class="label">Filename</label>
         <input id="filename" type="text" spellcheck="false" autocomplete="off">
+
+        <div class="trim-head">
+          <label for="start-time" class="label">Trim audio <span id="trim-dur" class="muted"></span></label>
+          <button id="trim-reset" type="button" class="link small" title="Reset to full lecture">Reset</button>
+        </div>
+        <div class="trim-row">
+          <label class="trim-field">
+            <span class="trim-tag">Start</span>
+            <input id="start-time" type="text" placeholder="0:00" spellcheck="false" autocomplete="off">
+          </label>
+          <label class="trim-field">
+            <span class="trim-tag">End</span>
+            <input id="end-time" type="text" placeholder="End" spellcheck="false" autocomplete="off">
+          </label>
+        </div>
+        <p id="trim-error" class="trim-error" hidden></p>
+
         <div class="row">
           <button id="go" class="primary">Download</button>
         </div>
